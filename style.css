@@ -1,0 +1,14 @@
+/* Color selected text differently */
+::selection {
+  /* background-color: #fef08a; */
+}
+
+#mark {
+  position: relative;
+}
+
+#saveMark {
+  position: absolute;
+  bottom: -1.5rem;
+  right: -1.5rem;
+}

@@ -1,0 +1,16 @@
+{
+  "name": "textmark",
+  "version": "0.0.0",
+  "description": "Store highlighted text along with related metadata in a user-specified file.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "chrome-types": "^0.1.276",
+    "dompurify": "^3.0.11"
+  }
+}
