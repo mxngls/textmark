@@ -8,7 +8,13 @@
 }
 
 #saveMark {
+  width: 2em;
+  height: 2em;
   position: absolute;
   bottom: -1.5rem;
   right: -1.5rem;
+  background-image: url("chrome-extension://fiebmlnfpijhdnchicmaecngkdkhcfeo/assets/scroll.svg");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
