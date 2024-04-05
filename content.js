@@ -1,48 +1,93 @@
 // import { sanitize } from "dompurify";
 
-// On mouseup check if there is text currently selected
-document.addEventListener("click", (_event) => {
-  let mark;
-  if ((mark = document.getElementById("mark"))) {
-    removeMark(mark);
+var MARK_SET = false;
+
+document.addEventListener("mouseup", (event) => {
+  if (event.target.tagName === "INPUT" || event.target.tagName === "TEXTAREA")
     return;
-  } else mark = document.createElement("span");
 
-  const selection = window.getSelection();
-  const range = selection.getRangeAt(0);
-  const rangeCount = selection.rangeCount;
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount < 1 || sel.toString().length < 1) return;
 
-  if (selection.toString().length < 1 || rangeCount < 1) return;
+  const mark = setMark(sel);
+  const saveMarkButton = createSaveMarkButton(sel);
+
+  if (mark) {
+    mark.appendChild(saveMarkButton);
+    saveMarkButton.focus();
+  }
+});
+
+document.addEventListener("mousedown", (event) => {
+  const mark = document.getElementById("mark");
+  if (mark && event.target.id !== document.getElementById("saveMark")) {
+    removeMark(mark);
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  const mark = document.getElementById("mark");
+  if (mark && event.target.id !== document.getElementById("saveMark")) {
+    removeMark(mark);
+  }
+});
+
+// Set a new mark if no mark is present yet
+function setMark(selection) {
+  if (MARK_SET) {
+    console.log("mark already set!");
+    return;
+  }
 
   // const sanitizedSel = selection.toString().trim();
   // TODO: Figure out how to properly import ESM modules
   // const sanitizedSel = sanitize(selection);
 
-  mark.id = "mark";
-
-  const saveMarkButton = document.createElement("button");
-  saveMarkButton.id = "saveMark";
-  saveMarkButton.textContent = "mark";
-  saveMarkButton.addEventListener("click", (event) => {
-    const immediateSelected = getMainChunk(selection);
-  });
-
-  mark.appendChild(saveMarkButton);
-
+  const mark = document.createElement("span");
+  const range = selection.getRangeAt(0);
   const savedRange = range.cloneRange();
 
+  mark.id = "mark";
+
+  // Set a mark
   range.collapse(false);
   range.insertNode(mark);
+  MARK_SET = true;
+
+  // Restore the current selection
   selection.removeAllRanges();
   selection.addRange(savedRange);
 
-  sel = selection;
-});
+  return mark;
+}
 
 function removeMark(mark) {
-  if (!mark) return;
+  if (!MARK_SET || !mark) {
+    return;
+  }
+
   const parent = mark.parentNode;
   parent.removeChild(mark);
+  window.getSelection().empty();
+
+  MARK_SET = false;
+}
+
+function createSaveMarkButton(selection) {
+  const saveMarkButton = document.createElement("button");
+
+  saveMarkButton.id = "saveMark";
+  saveMarkButton.addEventListener("click", (event) => {
+    // const immediateSelected = getMainChunk(selection);
+    // console.log(immediateSelected);
+
+    console.log(selection.toString().trim());
+
+    removeMark(event.target.parentNode);
+  });
+
+  return saveMarkButton;
 }
 
 // Determines which element from all elements a given selection spans
@@ -50,26 +95,29 @@ function removeMark(mark) {
 // return only that part of the selection that lies withing said element
 // or it's children.
 function getMainChunk(selection) {
-  if (selection.type !== "Range") return;
+  if (selection.type !== "Range") {
+    console.log("selection not of type range!");
+    return;
+  }
 
   const children = {};
-
-  console.log("selection", selection);
-  console.log("selection count:", selection.rangeCount);
 
   for (let i = 0; i < selection.rangeCount; i++) {
     const range = selection.getRangeAt(i);
     const ancestor = range.commonAncestorContainer;
 
-    let t = 0;
-    for (const child of ancestor.children) {
+    if (!ancestor.children) return ancestor;
+
+    for (let c = 0; c < ancestor.children.length; c++) {
+      let child = ancestor.children[c];
       if (selection.containsNode(child, true)) {
-        children[t++] = getFullText(child);
+        const childText = getFullText(child).trim();
+        children[c] = childText;
       }
     }
   }
 
-  console.log("children:", children);
+  return children;
 }
 
 // Recursively get the full text content of an element and its children
