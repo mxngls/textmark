@@ -1,6 +1,32 @@
 // import { sanitize } from "dompurify";
 
-var MARK_SET = false;
+MARK_SET = false;
+INLINE_ELEMENTS = [
+  "A",
+  "ABBR",
+  "B",
+  "BDI",
+  "BDO",
+  "CITE",
+  "CODE",
+  "DEL",
+  "EM",
+  "EM",
+  "I",
+  "INS",
+  "KBD",
+  "Q",
+  "RUBY",
+  "S",
+  "SAMP",
+  "SMALL",
+  "STRONG",
+  "SUB",
+  "SUP",
+  "TIME",
+  "VAR",
+];
+BLOCK_ELEMENTS = ["H1", "H2", "H3", "H4", "H5", "H6", "HR", "PRE"];
 
 document.addEventListener("mouseup", (event) => {
   if (event.target.tagName === "INPUT" || event.target.tagName === "TEXTAREA")
@@ -20,7 +46,7 @@ document.addEventListener("mouseup", (event) => {
 
 document.addEventListener("mousedown", (event) => {
   const mark = document.getElementById("mark");
-  if (mark && event.target.id !== document.getElementById("saveMark")) {
+  if (mark && event.target !== document.getElementById("saveMark")) {
     removeMark(mark);
   }
 });
@@ -36,7 +62,6 @@ document.addEventListener("keydown", (event) => {
 // Set a new mark if no mark is present yet
 function setMark(selection) {
   if (MARK_SET) {
-    console.log("mark already set!");
     return;
   }
 
@@ -47,6 +72,16 @@ function setMark(selection) {
   const mark = document.createElement("span");
   const range = selection.getRangeAt(0);
   const savedRange = range.cloneRange();
+
+  // When selecting a whole paragraph via double-clicking then the
+  // icon gets throw of and ends up not on the right, but on the left
+  // hand-side. This fixes this.
+  if (range.startOffset === 0 && range.endOffset === 0) {
+    range.setEnd(
+      range.startContainer.parentNode,
+      range.startContainer.parentNode.childNodes.length,
+    );
+  }
 
   mark.id = "mark";
 
@@ -69,7 +104,6 @@ function removeMark(mark) {
 
   const parent = mark.parentNode;
   parent.removeChild(mark);
-  window.getSelection().empty();
 
   MARK_SET = false;
 }
@@ -78,46 +112,80 @@ function createSaveMarkButton(selection) {
   const saveMarkButton = document.createElement("button");
 
   saveMarkButton.id = "saveMark";
-  saveMarkButton.addEventListener("click", (event) => {
-    // const immediateSelected = getMainChunk(selection);
-    // console.log(immediateSelected);
+  saveMarkButton.addEventListener("click", async (_event) => {
+    const URL = window.location.href;
+    console.log(URL, "\n");
 
-    console.log(selection.toString().trim());
+    const contents = getSelectedHTML(selection);
 
-    removeMark(event.target.parentNode);
+    const container = document.createElement("div");
+    container.appendChild(contents);
+    console.log(container);
+
+    removeMark(document.getElementById("mark"));
   });
 
   return saveMarkButton;
 }
 
-// Determines which element from all elements a given selection spans
-// contains most of the text currently highlighted. Then we simply
-// return only that part of the selection that lies withing said element
-// or it's children.
-function getMainChunk(selection) {
+function getSelectedHTML(selection) {
   if (selection.type !== "Range") {
     console.log("selection not of type range!");
     return;
   }
 
-  const children = {};
+  const children = [];
+  const doc = document.createDocumentFragment();
 
   for (let i = 0; i < selection.rangeCount; i++) {
     const range = selection.getRangeAt(i);
     const ancestor = range.commonAncestorContainer;
+    const start = range.startOffset;
+    const end = range.endOffset;
 
-    if (!ancestor.children) return ancestor;
+    const walker = document.createTreeWalker(
+      ancestor,
+      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+    );
 
-    for (let c = 0; c < ancestor.children.length; c++) {
-      let child = ancestor.children[c];
-      if (selection.containsNode(child, true)) {
-        const childText = getFullText(child).trim();
-        children[c] = childText;
+    while (walker.nextNode()) {
+      let child = walker.currentNode;
+
+      if (!selection.containsNode(child, true)) continue;
+
+      if (child.nodeType === Node.TEXT_NODE) {
+        children.push(
+          range.startContainer === child
+            ? child.textContent.slice(start)
+            : child === range.endContainer
+              ? child.textContent.slice(0, end)
+              : child.textContent,
+        );
+      } else if (
+        child.nodeType === Node.ELEMENT_NODE &&
+        "A" === child.tagName
+      ) {
+        // NOTE: Without cloning the element it gets removed as soon as
+        // we append to the document fragment created above
+        const link = child.cloneNode(true);
+        children.push(link);
       }
     }
   }
 
-  return children;
+  children.forEach((node) => doc.append(node));
+
+  return doc;
+}
+
+function getNextNode(node) {
+  if (node.nextElementSibling) {
+    return node.nextElementSibling;
+  } else if (node.hasChildNodes()) {
+    return node.firstChild;
+  }
+
+  return false;
 }
 
 // Recursively get the full text content of an element and its children
