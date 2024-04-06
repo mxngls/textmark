@@ -8,13 +8,16 @@
 }
 
 #saveMark {
-  width: 2em;
-  height: 2em;
+  width: 1.5rem;
+  height: 1.5rem;
   position: absolute;
   bottom: -1.5rem;
   right: -1.5rem;
+  z-index: 50;
+
   background-image: url("chrome-extension://__MSG_@@extension_id__/assets/scroll.svg");
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
+  background-color: lightyellow;
 }
