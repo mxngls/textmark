@@ -1,7 +1,7 @@
 // import { sanitize } from "dompurify";
 
-MARK_SET = false;
-INLINE_ELEMENTS = [
+var MARK_SET = false;
+var INLINE_ELEMENTS = [
   "A",
   "ABBR",
   "B",
@@ -26,7 +26,8 @@ INLINE_ELEMENTS = [
   "TIME",
   "VAR",
 ];
-BLOCK_ELEMENTS = ["H1", "H2", "H3", "H4", "H5", "H6", "HR", "PRE"];
+var BLOCK_ELEMENTS = ["H1", "H2", "H3", "H4", "H5", "H6", "HR", "PRE"];
+var ALLOWED_ATTRIBUTES = ["hidden", "href"];
 
 document.addEventListener("mouseup", (event) => {
   if (event.target.tagName === "INPUT" || event.target.tagName === "TEXTAREA")
@@ -128,6 +129,7 @@ function createSaveMarkButton(selection) {
   return saveMarkButton;
 }
 
+// TODO: Add line breaks between captured nodes of the commmon ancestor
 function getSelectedHTML(selection) {
   if (selection.type !== "Range") {
     console.log("selection not of type range!");
@@ -148,27 +150,64 @@ function getSelectedHTML(selection) {
       NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
     );
 
+    const ancestorChildren = Array.from(ancestor.childNodes);
+
+    console.log("ancestorChildren:", ancestorChildren);
+
+    let container = null;
+
     while (walker.nextNode()) {
       let child = walker.currentNode;
+      let childToAppend = null;
+
+      console.log(child);
 
       if (!selection.containsNode(child, true)) continue;
 
+      if (child.id === "mark") {
+        child.parentNode.removeChild(child);
+      }
+
       if (child.nodeType === Node.TEXT_NODE) {
-        children.push(
+        childToAppend =
           range.startContainer === child
             ? child.textContent.slice(start)
             : child === range.endContainer
               ? child.textContent.slice(0, end)
-              : child.textContent,
-        );
+              : child.textContent;
       } else if (
         child.nodeType === Node.ELEMENT_NODE &&
-        "A" === child.tagName
+        (INLINE_ELEMENTS.includes(child.tagName) ||
+          BLOCK_ELEMENTS.includes(child.tagName))
       ) {
         // NOTE: Without cloning the element it gets removed as soon as
         // we append to the document fragment created above
         const link = child.cloneNode(true);
-        children.push(link);
+        childToAppend = link;
+
+        // Make sure don't grab any text nodes that resides in one of
+        // the captured element nodes as we already got these
+        walker.nextNode();
+      } else if (
+        child.tagName !== "SPAN" &&
+        ancestorChildren.some(
+          (node, index) =>
+            node === child &&
+            index !== 0 &&
+            index !== ancestorChildren.length - 1,
+        )
+      ) {
+        container = !container ? document.createElement("p") : null;
+      }
+
+      if (childToAppend) {
+        const child_ = child.cloneNode(true);
+        if (container) {
+          container.appendChild(child_);
+          children.push(container);
+        } else {
+          children.push(child_);
+        }
       }
     }
   }
