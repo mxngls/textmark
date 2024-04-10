@@ -1,33 +1,6 @@
 // import { sanitize } from "dompurify";
 
 var MARK_SET = false;
-var INLINE_ELEMENTS = [
-  "A",
-  "ABBR",
-  "B",
-  "BDI",
-  "BDO",
-  "CITE",
-  "CODE",
-  "DEL",
-  "EM",
-  "EM",
-  "I",
-  "INS",
-  "KBD",
-  "Q",
-  "RUBY",
-  "S",
-  "SAMP",
-  "SMALL",
-  "STRONG",
-  "SUB",
-  "SUP",
-  "TIME",
-  "VAR",
-];
-var BLOCK_ELEMENTS = ["H1", "H2", "H3", "H4", "H5", "H6", "HR", "PRE"];
-var ALLOWED_ATTRIBUTES = ["hidden", "href"];
 
 document.addEventListener("mouseup", (event) => {
   if (event.target.tagName === "INPUT" || event.target.tagName === "TEXTAREA")
@@ -74,16 +47,6 @@ function setMark(selection) {
   const range = selection.getRangeAt(0);
   const savedRange = range.cloneRange();
 
-  // When selecting a whole paragraph via double-clicking then the
-  // icon gets throw of and ends up not on the right, but on the left
-  // hand-side. This fixes this.
-  if (range.startOffset === 0 && range.endOffset === 0) {
-    range.setEnd(
-      range.startContainer.parentNode,
-      range.startContainer.parentNode.childNodes.length,
-    );
-  }
-
   mark.id = "mark";
 
   // Set a mark
@@ -113,15 +76,18 @@ function createSaveMarkButton(selection) {
   const saveMarkButton = document.createElement("button");
 
   saveMarkButton.id = "saveMark";
-  saveMarkButton.addEventListener("click", async (_event) => {
+  saveMarkButton.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    event.stopPropagation();
     const URL = window.location.href;
     console.log(URL, "\n");
 
     const contents = getSelectedHTML(selection);
 
-    const container = document.createElement("div");
-    container.appendChild(contents);
-    console.log(container);
+    console.log("cloned contents:", selection.getRangeAt(0).cloneContents());
+    console.log("selection:", contents);
+    console.log("text:", selection.toString());
 
     removeMark(document.getElementById("mark"));
   });
@@ -129,115 +95,74 @@ function createSaveMarkButton(selection) {
   return saveMarkButton;
 }
 
-// TODO: Add line breaks between captured nodes of the commmon ancestor
 function getSelectedHTML(selection) {
   if (selection.type !== "Range") {
     console.log("selection not of type range!");
     return;
   }
 
-  const children = [];
   const doc = document.createDocumentFragment();
 
   for (let i = 0; i < selection.rangeCount; i++) {
     const range = selection.getRangeAt(i);
-    const ancestor = range.commonAncestorContainer;
-    const start = range.startOffset;
-    const end = range.endOffset;
+    const contents = range.cloneContents();
+    const root = document.createElement("article");
+    root.style.borderBottom = "1px dotted dimgrey";
+    root.style.padding = "1rem";
+
+    const header = document.createElement("div");
+    const link = document.createElement("a");
+    link.href = window.location.href;
+    link.innerText = new Date();
+
+    header.append(link);
+    root.appendChild(header);
+
+    root.appendChild(contents);
 
     const walker = document.createTreeWalker(
-      ancestor,
+      root,
       NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
     );
 
-    const ancestorChildren = Array.from(ancestor.childNodes);
-
-    console.log("ancestorChildren:", ancestorChildren);
-
-    let container = null;
+    const emptyNodes = [];
 
     while (walker.nextNode()) {
       let child = walker.currentNode;
-      let childToAppend = null;
 
-      console.log(child);
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        // Copied nodes should be "clean" so we remove unwanted
+        // attributes. For now I can only think of the class attribute,
+        // but there may be more. I have yet not decided if it's better
+        // to preserve inline styles or not. Perserving them works great
+        // for Wikipedia, but less for the dozen other websites I
+        // tested.
+        child.removeAttribute("class");
 
-      if (!selection.containsNode(child, true)) continue;
-
-      if (child.id === "mark") {
-        child.parentNode.removeChild(child);
-      }
-
-      if (child.nodeType === Node.TEXT_NODE) {
-        childToAppend =
-          range.startContainer === child
-            ? child.textContent.slice(start)
-            : child === range.endContainer
-              ? child.textContent.slice(0, end)
-              : child.textContent;
-      } else if (
-        child.nodeType === Node.ELEMENT_NODE &&
-        (INLINE_ELEMENTS.includes(child.tagName) ||
-          BLOCK_ELEMENTS.includes(child.tagName))
-      ) {
-        // NOTE: Without cloning the element it gets removed as soon as
-        // we append to the document fragment created above
-        const link = child.cloneNode(true);
-        childToAppend = link;
-
-        // Make sure don't grab any text nodes that resides in one of
-        // the captured element nodes as we already got these
-        walker.nextNode();
-      } else if (
-        child.tagName !== "SPAN" &&
-        ancestorChildren.some(
-          (node, index) =>
-            node === child &&
-            index !== 0 &&
-            index !== ancestorChildren.length - 1,
-        )
-      ) {
-        container = !container ? document.createElement("p") : null;
-      }
-
-      if (childToAppend) {
-        const child_ = child.cloneNode(true);
-        if (container) {
-          container.appendChild(child_);
-          children.push(container);
-        } else {
-          children.push(child_);
+        if (!child.textContent.trim()) {
+          emptyNodes.push(child);
+        } else if (child.tagName === "A") {
+          if (isRelativeRef(child.href)) {
+            child.href = new URL(child.href, document.baseURI);
+          }
         }
       }
     }
+
+    emptyNodes.forEach((node) => node.parentNode.removeChild(node));
+
+    console.log("textContent:", root.textContent);
+    console.log("innerText:", root.innerText);
+    console.log("innerHTML:", root.innerHTML);
+
+    doc.append(root);
+
+    return doc;
   }
-
-  children.forEach((node) => doc.append(node));
-
-  return doc;
 }
 
-function getNextNode(node) {
-  if (node.nextElementSibling) {
-    return node.nextElementSibling;
-  } else if (node.hasChildNodes()) {
-    return node.firstChild;
-  }
-
-  return false;
-}
-
-// Recursively get the full text content of an element and its children
-function getFullText(element) {
-  let text = "";
-
-  for (let node of element.childNodes) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      text += node.textContent;
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-      text += getFullText(node);
-    }
-  }
-
-  return text;
+function isRelativeRef(href) {
+  return (
+    new URL(document.baseURI).origin === new URL(href, document.baseURI).origin
+  );
 }
