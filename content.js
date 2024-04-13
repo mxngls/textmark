@@ -136,6 +136,7 @@ function getSelectedHTML(selection) {
         // for Wikipedia, but less for the dozen other websites I
         // tested.
         child.removeAttribute("class");
+        child.removeAttribute("style");
 
         if (!child.textContent.trim()) {
           emptyNodes.push(child);
