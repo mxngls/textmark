@@ -78,8 +78,6 @@ function createSaveMarkButton(selection) {
   saveMarkButton.id = "saveMark";
   saveMarkButton.addEventListener("click", async (event) => {
     event.preventDefault();
-    event.stopImmediatePropagation();
-    event.stopPropagation();
     const URL = window.location.href;
     console.log(URL, "\n");
 
