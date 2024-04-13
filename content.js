@@ -148,9 +148,6 @@ function getSelectedHTML(selection) {
       }
     }
 
-    console.log("textContent:", root.textContent);
-    console.log("innerText:", root.innerText);
-    console.log("innerHTML:", root.innerHTML);
     toRemove.forEach((node) => node.remove());
 
     doc.append(root);
