@@ -104,7 +104,7 @@ function getSelectedHTML(selection) {
   for (let i = 0; i < selection.rangeCount; i++) {
     const range = selection.getRangeAt(i);
     const contents = range.cloneContents();
-    const root = document.createElement("article");
+    const root = document.createElement("div");
     root.style.borderBottom = "1px dotted dimgrey";
     root.style.padding = "1rem";
 
