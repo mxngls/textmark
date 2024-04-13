@@ -123,7 +123,6 @@ function getSelectedHTML(selection) {
       NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
     );
 
-    const emptyNodes = [];
 
     while (walker.nextNode()) {
       let child = walker.currentNode;
@@ -138,17 +137,13 @@ function getSelectedHTML(selection) {
         child.removeAttribute("class");
         child.removeAttribute("style");
 
-        if (!child.textContent.trim()) {
-          emptyNodes.push(child);
-        } else if (child.tagName === "A") {
+        if (child.tagName === "A") {
           if (isRelativeRef(child.href)) {
             child.href = new URL(child.href, document.baseURI);
           }
         }
       }
     }
-
-    emptyNodes.forEach((node) => node.parentNode.removeChild(node));
 
     console.log("textContent:", root.textContent);
     console.log("innerText:", root.innerText);
