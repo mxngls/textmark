@@ -123,6 +123,7 @@ function getSelectedHTML(selection) {
       NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
     );
 
+    const toRemove = [];
 
     while (walker.nextNode()) {
       let child = walker.currentNode;
@@ -141,6 +142,8 @@ function getSelectedHTML(selection) {
           if (isRelativeRef(child.href)) {
             child.href = new URL(child.href, document.baseURI);
           }
+        } else if (child.tagName === "IMG" || child.tagName === "svg") {
+          toRemove.push(child);
         }
       }
     }
@@ -148,6 +151,7 @@ function getSelectedHTML(selection) {
     console.log("textContent:", root.textContent);
     console.log("innerText:", root.innerText);
     console.log("innerHTML:", root.innerHTML);
+    toRemove.forEach((node) => node.remove());
 
     doc.append(root);
 
