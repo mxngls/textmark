@@ -108,13 +108,7 @@ function getSelectedHTML(selection) {
     root.style.borderBottom = "1px dotted dimgrey";
     root.style.padding = "1rem";
 
-    const header = document.createElement("div");
-    const link = document.createElement("a");
-    link.href = window.location.href;
-    link.innerText = new Date();
 
-    header.append(link);
-    root.appendChild(header);
 
     root.appendChild(contents);
 
