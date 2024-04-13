@@ -4,9 +4,12 @@
 # Dependency directories
 node_modules/
 
-# dotenv environment variables file
+# Environment Vars
 .env
 
 # System Files
 .DS_Store
 Thumbs.db
+
+# Used for manual tests
+mark.html
