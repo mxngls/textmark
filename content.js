@@ -108,12 +108,14 @@ function getSelectedHTML(selection) {
     root.style.borderBottom = "1px dotted dimgrey";
     root.style.padding = "1rem";
 
+    const ancestor = range.commonAncestorContainer;
+    const container = document.createElement(ancestor.tagName);
 
-
-    root.appendChild(contents);
+    container.appendChild(contents);
+    root.appendChild(container);
 
     const walker = document.createTreeWalker(
-      root,
+      container,
       NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
     );
 
